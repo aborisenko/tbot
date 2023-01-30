@@ -4,7 +4,7 @@ import zio.config._
 import zio.config.magnolia.descriptor
 import zio.config.typesafe.TypesafeConfigSource
 
-package object configuration {
+package object _configuration {
 
   case class BotConfig(token: String)
 

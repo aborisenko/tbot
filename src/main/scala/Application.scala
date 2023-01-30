@@ -1,5 +1,10 @@
-import DB.ZioDataSourceService
-import configuration.BotConfig
+import DB.LiquibaseService.LiquibaseService
+import DB.{LiquibaseService, ZioDataSourceService}
+import _configuration.BotConfig
+import io.getquill.{Literal, MysqlJdbcContext}
+import liquibase.Liquibase
+import liquibase.database.jvm.JdbcConnection
+import liquibase.resource.ClassLoaderResourceAccessor
 import zhttp.http._
 import zhttp.service.client.ClientSSLHandler
 import zhttp.service.client.ClientSSLHandler.ClientSSLOptions
@@ -50,18 +55,29 @@ object Request {
 //
 //}
 
-object test extends ZIOAppDefault {
+//object test extends ZIOAppDefault {
+//
+//  import DB.Ctx
+//  import DB.Ctx._
+//
+//  case class Person(name: String, age: Int)
+//
+//  val people = quote {
+//    query[Person]
+//  }
+//
+//  val app = /*ZIO.service[LiquibaseService].map(_.performMigration) *> */Ctx.run(people).tap(result => Console.printLine(result.toString))
+//
+//  def run = app.provide(ZioDataSourceService.layer >+> LiquibaseService.live)
+//}
 
-  import DB.Ctx
-  import DB.Ctx._
+object test extends App {
+  lazy val ctx = new MysqlJdbcContext(Literal, "ctx")
+  val ds = ctx.dataSource
+  val accessor = new ClassLoaderResourceAccessor()
+  val conn = new JdbcConnection(ds.getConnection())
+  val liqui = new Liquibase("liquibase/main.xml", accessor, conn)
 
-  case class Person(name: String, age: Int)
+  liqui.update()
 
-  val people = quote {
-    query[Person]
-  }
-
-  val app = Ctx.run(people).tap(result => Console.printLine(result.toString))
-
-  def run = app.provide(ZioDataSourceService.layer)
 }
