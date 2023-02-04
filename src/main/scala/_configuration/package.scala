@@ -24,4 +24,17 @@ package object _configuration {
           }
         }
   }
+
+  object LiquibaseConfig {
+
+    val layer: ZLayer[Any, ReadError[String], LiquibaseConfig] =
+      ZLayer {
+        read {
+          descriptor[LiquibaseConfig].from(
+            TypesafeConfigSource.fromResourcePath
+              .at(PropertyTreePath.$("liquibase"))
+          )
+        }
+      }
+  }
 }
