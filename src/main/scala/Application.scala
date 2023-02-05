@@ -1,7 +1,6 @@
-import DB.LiquibaseService
-import _configuration.BotConfig
-import db.{MigrationService, MigrationServiceLive, QuillContext}
-import liquibase.Liquibase
+import db.LiquibaseService
+import db.{MigrationService, QuillContext}
+import io.circe.Json
 import zhttp.http._
 import zhttp.service.client.ClientSSLHandler
 import zhttp.service.client.ClientSSLHandler.ClientSSLOptions
@@ -9,7 +8,19 @@ import zhttp.service.{ChannelFactory, Client, EventLoopGroup}
 import zio._
 
 import java.io.IOException
-import javax.sql.DataSource
+import scala.language.postfixOps
+import io.circe._
+import io.circe.generic.auto._
+import io.circe.parser._
+import io.circe.syntax._
+
+import scala.util.matching.Regex._
+
+case class TelegramMessage(message_id: Long, date: Long, text: Option[String])
+case class UpdateMessage(update_id: Long, message: TelegramMessage)
+case class UpdateResponse(ok: Boolean, result: Array[UpdateMessage])
+
+
 
 object Request {
 
@@ -20,13 +31,15 @@ object Request {
   val sslOption: ClientSSLOptions =
     ClientSSLOptions.CustomSSL(ClientSSLHandler.ssl(ClientSSLOptions.DefaultSSL))
 
-  def send(method: String): ZIO[EventLoopGroup with ChannelFactory with BotConfig, IOException, Body] = (for {
-    config <- ZIO.service[BotConfig]
-      url = urlTemplate + config.token
-    res  <- Client.request(url ++ "/" ++ method, headers = headers, ssl = sslOption)
+  val url = urlTemplate + "5700138842:AAG6uET_pcvL8M57o3W0aHrTWKA8etkLBzU"
+  def pull(updateIdR: Ref[Long]): ZIO[EventLoopGroup with ChannelFactory, IOException, Body] = (for {
+    updateId <- updateIdR.get
+    _url = url ++ "/" ++ s"getUpdates?offset=${updateId}&timeout=10&limit=100"
+    _ <- Console.printLine(_url)
+    res  <- Client.request(_url, headers = headers, ssl = sslOption)
     data <- res.body.asString
-    _ <- Console.printLine(data)
-  } yield res.body).catchAll( ex => Console.printLine(ex.getMessage) *> ZIO.succeed(Body.empty))
+//    _ <- Console.printLine(data)
+  } yield res.body).catchAll( ex => Console.printLine(ex.getMessage) *> ZIO.succeed(Body.empty) )
 }
 
 //object Application extends ZIOAppDefault {
@@ -51,33 +64,73 @@ object Request {
 //}
 
 object test extends ZIOAppDefault {
-//
-//  import DB.Ctx
-//  import DB.Ctx._
-//
-//  case class Person(name: String, age: Int)
-//
-//  val people = quote {
-//    query[Person]
-//  }
-//
-  val layers = QuillContext.dataSourceLayer >>> LiquibaseService.live >+> MigrationService.live
 
-  val app = for {
+  val migrations = (for {
     migration <- ZIO.service[MigrationService]
     _ <- migration.performMigration
-  } yield ()
-//
-  def run = app.provide(layers)
-}
+  } yield ()).provideSomeLayer(LiquibaseService.live >+> MigrationService.live)
 
-//object test extends App {
-//  lazy val ctx = new MysqlJdbcContext(Literal, "ctx")
-//  val ds = ctx.dataSource
-//  val accessor = new ClassLoaderResourceAccessor()
-//  val conn = new JdbcConnection(ds.getConnection())
-//  val liqui = new Liquibase("liquibase/main.xml", accessor, conn)
-//
-//  liqui.update()
-//
-//}
+  import Request.pull
+
+  val updateIdRef: UIO[Ref[Long]] = Ref.make(0L)
+  def start(updateIdRef: UIO[Ref[Long]]) = for {
+    updateId <- updateIdRef
+    _ <- pooling(updateId)
+  } yield ()
+
+  def updateCounter(list: Array[Long], ref: Ref[Long]) = for {
+    maxUpdateId <- ZIO.attempt(list.max)
+    _ <- ref.update(_ => maxUpdateId + 1)
+  } yield ()
+
+
+  case class CustomerRequest( id: Option[String] = None,
+                              transactionInfo: Option[String] = None,
+                              clientInfo: Option[String] = None,
+                              phone: Option[String] = None,
+                              wallet: Option[String] = None,
+                              password: Option[String] = None,
+                              appointmentInfo: Option[String] = None)
+  def parseTextMessage(list: Array[(Long, Option[String])]) = {
+    val pattern = raw".*(\w+ )".r.pattern
+
+    val idPattern = raw"️.*Новая заявка\s*(\d+)".r
+    val customer = raw".*Клиент\s*:\s*(.+)".r
+    val phonePattern = raw".*️Телефон\s*:\s*(.+)".r
+    val transactionInfo = raw"(.+)→(.+)".r
+    val walletPattern = raw".*Кошелек\s*:\s*(.+)".r
+    val passwordPattern = raw".*Пароль\s*:\s*(.+)".r
+    val appointmentPattern = raw"(.+офис.+)".r
+
+    for {
+      messages <- ZIO.succeed(list.collect{ case (_, Some(str)) => str})
+      res = messages.map { msg =>
+        msg.split("\n").foldLeft(CustomerRequest()) {
+          case (acc, idPattern(id)) => acc.copy(id = Some(id.trim))
+          case (acc, customer(clientInfo)) => acc.copy(clientInfo = Some(clientInfo.trim))
+          case (acc, phonePattern(phone)) => acc.copy(phone = Some(phone.trim))
+          case (acc, transactionInfo(from, to)) => acc.copy(transactionInfo = Some(from.trim ++ to.trim))
+          case (acc, walletPattern(wallet)) => acc.copy(wallet = Some(wallet.trim))
+          case (acc, passwordPattern(password)) => acc.copy(password = Some(password.trim))
+          case (acc, appointmentPattern(appointment)) => acc.copy(appointmentInfo = Some(appointment.trim))
+          case (acc, _) => acc
+        }
+      }
+    } yield (res)
+  }
+
+  def pooling(updateId: Ref[Long]): ZIO[EventLoopGroup with ChannelFactory, Throwable, Unit] = for {
+    b <- pull(updateId)
+    str <- b.asString
+//    json = Json.fromString(str)
+//    array = json // "return"
+    responseMsg <- ZIO.fromEither(decode[UpdateResponse](str))
+    res = responseMsg.result.map(ur => (ur.update_id,ur.message.text))
+    _ <- updateCounter(res.map( _._1 ), updateId).catchAll(_ => ZIO.unit)
+    _ <- Console.printLine(res.mkString)
+    arr <- parseTextMessage(res)
+    _ <- Console.printLine(arr.mkString("(", ", ", ")"))
+    _ <- pooling( updateId)
+  } yield ()
+  def run = migrations.provide(QuillContext.dataSourceLayer) *> start(updateIdRef).schedule(Schedule.fixed(10 seconds)).forever.provide(ChannelFactory.auto, EventLoopGroup.auto())
+}

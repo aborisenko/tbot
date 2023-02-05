@@ -6,7 +6,7 @@ import liquibase.database.jvm.JdbcConnection
 import liquibase.resource.ClassLoaderResourceAccessor
 
 import java.io.IOException
-package object DB {
+package object db {
 
   object LiquibaseService {
 
