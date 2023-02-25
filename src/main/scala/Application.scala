@@ -1,11 +1,11 @@
-import db.LiquibaseService
-import db.{MigrationService, QuillContext}
+import db.{LiquibaseService, MigrationService, QuillContext}
 import io.circe.Json
 import zhttp.http._
 import zhttp.service.client.ClientSSLHandler
 import zhttp.service.client.ClientSSLHandler.ClientSSLOptions
 import zhttp.service.{ChannelFactory, Client, EventLoopGroup}
 import zio._
+import org.joda.time.DateTime
 
 import java.io.IOException
 import scala.language.postfixOps
@@ -83,6 +83,26 @@ object test extends ZIOAppDefault {
     _ <- ref.update(_ => maxUpdateId + 1)
   } yield ()
 
+  /**
+   * @uid String */
+  case class Deal(uid: Option[String] = None,
+                  date: Option[DateTime] = None,
+                  id: Option[String] = None,
+                  `type`: Option[Char] = None,
+                  buy: Option[Double] = None,
+                  buy_currency_id: Option[Int] = None,
+                  buy_rate: Option[Float] = None,
+                  sell: Option[Double] = None,
+                  sell_currency_id: Option[Int] = None,
+                  sell_rate: Option[Float] = None,
+                  spread: Option[Float] = None,
+                  profit: Option[Float] = None,
+                  bonus: Option[Float] = None
+                 )
+
+  object Deal {
+
+  }
 
   case class CustomerRequestDTO(id:               Option[String] = None,
                                 transactionType:  Option[String] = None,
@@ -139,5 +159,5 @@ object test extends ZIOAppDefault {
     _ <- Console.printLine(arr.mkString("(", ", ", ")"))
     _ <- pooling( updateId)
   } yield ()
-  def run = migrations.provide(QuillContext.dataSourceLayer) *> start(updateIdRef).schedule(Schedule.fixed(10 seconds)).forever.provide(ChannelFactory.auto, EventLoopGroup.auto())
+  def run = migrations.provide(db.dataSourceLayer) *> start(updateIdRef).schedule(Schedule.fixed(10 seconds)).forever.provide(ChannelFactory.auto, EventLoopGroup.auto())
 }

@@ -1,5 +1,8 @@
 import zio.{ZIO, ZLayer}
 
+import io.getquill.jdbczio.Quill
+import io.getquill.{CompositeNamingStrategy2, Literal, NamingStrategy, SnakeCase}
+
 import javax.sql.DataSource
 import liquibase._
 import liquibase.database.jvm.JdbcConnection
@@ -7,6 +10,9 @@ import liquibase.resource.ClassLoaderResourceAccessor
 
 import java.io.IOException
 package object db {
+
+  val dataSourceLayer: ZLayer[Any, Throwable, DataSource] = Quill.DataSource.fromPrefix("ctx")
+  val quillLayer: ZLayer[DataSource, Nothing, Quill.Mysql[CompositeNamingStrategy2[SnakeCase, Literal]]] = Quill.Mysql.fromNamingStrategy(NamingStrategy(SnakeCase, Literal))
 
   object LiquibaseService {
 

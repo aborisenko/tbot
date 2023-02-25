@@ -20,6 +20,8 @@ lazy val root = (project in file("."))
       "org.mariadb.jdbc" % "mariadb-java-client" % "3.0.4"// https://mvnrepository.com/artifact/org.mariadb.jdbc/mariadb-java-client
     ),
     libraryDependencies ++= Seq(liquibase),
+    libraryDependencies += "joda-time" % "joda-time" % "2.12.1"
 
-//    testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"),
+
+    //    testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"),
 )
