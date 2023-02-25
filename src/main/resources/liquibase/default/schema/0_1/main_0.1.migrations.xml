@@ -5,33 +5,59 @@
         xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
                             http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-2.0.xsd">
 
-        <changeSet id="create request table" author="aborisenko">
-          <createTable tableName="Request">
-              <column name="_id" type="int">
-                <constraints primaryKey="true" nullable="false"/>
-              </column>
-              <column name="id" type="text">
-                  <constraints nullable="false"/>
-              </column>
-              <column name="requestStr" type="text">
-                  <constraints nullable="true"/>
-              </column>
-              <column name="fio" type="text">
-                  <constraints nullable="true"/>
-              </column>
-              <column name="contact" type="text">
-                  <constraints nullable="true"/>
-              </column>
-              <column name="wallet" type="text">
-                  <constraints nullable="true"/>
-              </column>
-              <column name="meeting" type="text">
-                  <constraints nullable="true"/>
-              </column>
-              <column name="password" type="text">
-                  <constraints nullable="true"/>
-              </column>
-          </createTable>
-        </changeSet>
+    <changeSet id="drop deals table" author="aborisenko">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="deals"/>
+        </preConditions>
+
+        <dropTable cascadeConstraints="true"
+                   tableName="deals"/>
+    </changeSet>
+
+    <changeSet id="create deals table" author="aborisenko">
+
+        <createTable tableName="deals">
+            <column name="uid" type="BIGINT" autoIncrement="true">
+              <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="date" type="DATETIME">
+              <constraints nullable="true"/>
+            </column>
+            <column name="id" type="VARCHAR(30)">
+              <constraints nullable="true"/>
+            </column>
+            <column name="type" type="CHAR(1)">
+              <constraints nullable="true"/>
+            </column>
+            <column name="buy" type="DOUBLE">
+              <constraints nullable="true"/>
+            </column>
+            <column name="buy_currency_id" type="VARCHAR(30)">
+              <constraints nullable="true"/>
+            </column>
+            <column name="buy_rate" type="FLOAT">
+              <constraints nullable="true"/>
+            </column>
+            <column name="sell" type="DOUBLE">
+              <constraints nullable="true"/>
+            </column>
+            <column name="sell_currency_id" type="VARCHAR(30)">
+              <constraints nullable="true"/>
+            </column>
+            <column name="sell_rate" type="FLOAT">
+              <constraints nullable="true"/>
+            </column>
+            <column name="spread" type="FLOAT">
+              <constraints nullable="true"/>
+            </column>
+            <column name="profit" type="FLOAT">
+              <constraints nullable="true"/>
+            </column>
+            <column name="bonus" type="FLOAT">
+              <constraints nullable="true"/>
+            </column>
+        </createTable>
+
+    </changeSet>
 
 </databaseChangeLog>

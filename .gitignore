@@ -2,3 +2,4 @@
 project/
 .bsp/
 target/
+src/main/resources/truststore.jks

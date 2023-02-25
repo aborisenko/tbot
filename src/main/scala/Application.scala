@@ -84,35 +84,42 @@ object test extends ZIOAppDefault {
   } yield ()
 
 
-  case class CustomerRequest( id: Option[String] = None,
-                              transactionInfo: Option[String] = None,
-                              clientInfo: Option[String] = None,
-                              phone: Option[String] = None,
-                              wallet: Option[String] = None,
-                              password: Option[String] = None,
-                              appointmentInfo: Option[String] = None)
+  case class CustomerRequestDTO(id:               Option[String] = None,
+                                transactionType:  Option[String] = None,
+                                takeAmount:       Option[String] = None,
+                                takeCurrency:     Option[String] = None,
+                                releaseAmount:    Option[String] = None,
+                                releaseCurrency:  Option[String] = None,
+                                inRate:           Option[String] = None,
+                                outRate:          Option[String] = None,
+                                commission:       Option[String] = None
+                               )
+
   def parseTextMessage(list: Array[(Long, Option[String])]) = {
     val pattern = raw".*(\w+ )".r.pattern
 
-    val idPattern = raw"️.*Новая заявка\s*(\d+)".r
-    val customer = raw".*Клиент\s*:\s*(.+)".r
-    val phonePattern = raw".*️Телефон\s*:\s*(.+)".r
-    val transactionInfo = raw"(.+)→(.+)".r
-    val walletPattern = raw".*Кошелек\s*:\s*(.+)".r
-    val passwordPattern = raw".*Пароль\s*:\s*(.+)".r
-    val appointmentPattern = raw"(.+офис.+)".r
+    val idPattern = raw"️.*ID:\s*([\w\s\d]+)".r
+    val transactionType = raw".*Тип сделки:(\w+)".r
+    val take = raw".*Принял:\s*(\d+)\s*([\w]+)".r
+    val inRate = raw".*Курс:([\d\,\.]+)".r
+    val outRate = raw".*Гар:([\d\.\,]+)".r
+    val release = raw".*Выдал\s*(\d+)\s*([\w]+)".r
+//    val phonePattern = raw".*️Телефон\s*:\s*(.+)".r
+//    val transactionInfo = raw"(.+)→(.+)".r
+//    val walletPattern = raw".*Кошелек\s*:\s*(.+)".r
+//    val passwordPattern = raw".*Пароль\s*:\s*(.+)".r
+//    val appointmentPattern = raw"(.+офис.+)".r
 
     for {
       messages <- ZIO.succeed(list.collect{ case (_, Some(str)) => str})
       res = messages.map { msg =>
-        msg.split("\n").foldLeft(CustomerRequest()) {
+        msg.split("\n").foldLeft(CustomerRequestDTO()) {
           case (acc, idPattern(id)) => acc.copy(id = Some(id.trim))
-          case (acc, customer(clientInfo)) => acc.copy(clientInfo = Some(clientInfo.trim))
-          case (acc, phonePattern(phone)) => acc.copy(phone = Some(phone.trim))
-          case (acc, transactionInfo(from, to)) => acc.copy(transactionInfo = Some(from.trim ++ to.trim))
-          case (acc, walletPattern(wallet)) => acc.copy(wallet = Some(wallet.trim))
-          case (acc, passwordPattern(password)) => acc.copy(password = Some(password.trim))
-          case (acc, appointmentPattern(appointment)) => acc.copy(appointmentInfo = Some(appointment.trim))
+          case (acc, transactionType(tType)) => acc.copy(transactionType = Some(tType.trim))
+          case (acc, take(amount, currency)) => acc.copy(takeAmount = Some(amount.trim), takeCurrency = Some(currency.trim))
+          case (acc, inRate(rate)) => acc.copy(inRate = Some(rate.trim))
+          case (acc, release(amount, currency)) => acc.copy(releaseAmount = Some(amount.trim), releaseCurrency = Some(currency.trim))
+          case (acc, outRate(rate)) => acc.copy(outRate = Some(rate.trim))
           case (acc, _) => acc
         }
       }
