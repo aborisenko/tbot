@@ -112,35 +112,31 @@ object test extends ZIOAppDefault {
                                 releaseCurrency:  Option[String] = None,
                                 inRate:           Option[String] = None,
                                 outRate:          Option[String] = None,
-                                commission:       Option[String] = None
+                                commission:       Option[String] = None,
+                                unrecognized: List[String] = Nil
                                )
 
   def parseTextMessage(list: Array[(Long, Option[String])]) = {
-    val pattern = raw".*(\w+ )".r.pattern
-
-    val idPattern = raw"️.*ID:\s*([\w\s\d]+)".r
-    val transactionType = raw".*Тип сделки:(\w+)".r
-    val take = raw".*Принял:\s*(\d+)\s*([\w]+)".r
-    val inRate = raw".*Курс:([\d\,\.]+)".r
-    val outRate = raw".*Гар:([\d\.\,]+)".r
-    val release = raw".*Выдал\s*(\d+)\s*([\w]+)".r
-//    val phonePattern = raw".*️Телефон\s*:\s*(.+)".r
-//    val transactionInfo = raw"(.+)→(.+)".r
-//    val walletPattern = raw".*Кошелек\s*:\s*(.+)".r
-//    val passwordPattern = raw".*Пароль\s*:\s*(.+)".r
-//    val appointmentPattern = raw"(.+офис.+)".r
+    val idPattern = """^ID: *([\wа-яА-Я ]+)$$""".r
+    val transactionType = raw"^Тип сделки: *([а-яА-Я]+)$$".r
+    val take = raw"^Принял: *(\d+) *([a-zA-Zа-яА-Я]+) *$$".r
+    val inRate = raw"^Курс: *([\d\,\.]+)$$".r
+    val outRate = raw"^Гар: *([\d\.\,]+)$$".r
+    val release = raw"^Выдал: *(\d+) *([a-zA-Zа-яА-Я]+) *$$".r
 
     for {
+
       messages <- ZIO.succeed(list.collect{ case (_, Some(str)) => str})
       res = messages.map { msg =>
-        msg.split("\n").foldLeft(CustomerRequestDTO()) {
-          case (acc, idPattern(id)) => acc.copy(id = Some(id.trim))
-          case (acc, transactionType(tType)) => acc.copy(transactionType = Some(tType.trim))
-          case (acc, take(amount, currency)) => acc.copy(takeAmount = Some(amount.trim), takeCurrency = Some(currency.trim))
-          case (acc, inRate(rate)) => acc.copy(inRate = Some(rate.trim))
-          case (acc, release(amount, currency)) => acc.copy(releaseAmount = Some(amount.trim), releaseCurrency = Some(currency.trim))
-          case (acc, outRate(rate)) => acc.copy(outRate = Some(rate.trim))
-          case (acc, _) => acc
+        println(msg)
+        msg.split("\n").map(_.trim).foldLeft(CustomerRequestDTO()) {
+          case (acc, idPattern(id)) => acc.copy(id = Some(id))
+          case (acc, transactionType(tType)) => acc.copy(transactionType = Some(tType))
+          case (acc, take(amount, currency)) => acc.copy(takeAmount = Some(amount), takeCurrency = Some(currency))
+          case (acc, inRate(rate)) => acc.copy(inRate = Some(rate))
+          case (acc, release(amount, currency)) => acc.copy(releaseAmount = Some(amount), releaseCurrency = Some(currency))
+          case (acc, outRate(rate)) => acc.copy(outRate = Some(rate))
+          case (acc, str) => acc.copy(unrecognized = str +: acc.unrecognized)
         }
       }
     } yield (res)
