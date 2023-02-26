@@ -1,11 +1,11 @@
-import db.{LiquibaseService, MigrationService, QuillContext}
-import io.circe.Json
+import dao.DealDAO
+import db.{LiquibaseService, MigrationService}
+import dto.DealDTO
 import zhttp.http._
 import zhttp.service.client.ClientSSLHandler
 import zhttp.service.client.ClientSSLHandler.ClientSSLOptions
 import zhttp.service.{ChannelFactory, Client, EventLoopGroup}
 import zio._
-import org.joda.time.DateTime
 
 import java.io.IOException
 import scala.language.postfixOps
@@ -82,40 +82,8 @@ object test extends ZIOAppDefault {
     maxUpdateId <- ZIO.attempt(list.max)
     _ <- ref.update(_ => maxUpdateId + 1)
   } yield ()
-
   /**
    * @uid String */
-  case class Deal(uid: Option[String] = None,
-                  date: Option[DateTime] = None,
-                  id: Option[String] = None,
-                  `type`: Option[Char] = None,
-                  buy: Option[Double] = None,
-                  buy_currency_id: Option[Int] = None,
-                  buy_rate: Option[Float] = None,
-                  sell: Option[Double] = None,
-                  sell_currency_id: Option[Int] = None,
-                  sell_rate: Option[Float] = None,
-                  spread: Option[Float] = None,
-                  profit: Option[Float] = None,
-                  bonus: Option[Float] = None
-                 )
-
-  object Deal {
-
-  }
-
-  case class CustomerRequestDTO(id:               Option[String] = None,
-                                transactionType:  Option[String] = None,
-                                takeAmount:       Option[String] = None,
-                                takeCurrency:     Option[String] = None,
-                                releaseAmount:    Option[String] = None,
-                                releaseCurrency:  Option[String] = None,
-                                inRate:           Option[String] = None,
-                                outRate:          Option[String] = None,
-                                commission:       Option[String] = None,
-                                unrecognized: List[String] = Nil
-                               )
-
   def parseTextMessage(list: Array[(Long, Option[String])]) = {
     val idPattern = """^ID: *([\wа-яА-Я ]+)$$""".r
     val transactionType = raw"^Тип сделки: *([а-яА-Я]+)$$".r
@@ -125,24 +93,24 @@ object test extends ZIOAppDefault {
     val release = raw"^Выдал: *(\d+) *([a-zA-Zа-яА-Я]+) *$$".r
 
     for {
-
       messages <- ZIO.succeed(list.collect{ case (_, Some(str)) => str})
       res = messages.map { msg =>
         println(msg)
-        msg.split("\n").map(_.trim).foldLeft(CustomerRequestDTO()) {
+        msg.split("\n").map(_.trim).foldLeft(DealDTO()) {
           case (acc, idPattern(id)) => acc.copy(id = Some(id))
           case (acc, transactionType(tType)) => acc.copy(transactionType = Some(tType))
-          case (acc, take(amount, currency)) => acc.copy(takeAmount = Some(amount), takeCurrency = Some(currency))
-          case (acc, inRate(rate)) => acc.copy(inRate = Some(rate))
-          case (acc, release(amount, currency)) => acc.copy(releaseAmount = Some(amount), releaseCurrency = Some(currency))
-          case (acc, outRate(rate)) => acc.copy(outRate = Some(rate))
+          case (acc, take(amount, currency)) => acc.copy(buyAmount = Some(amount), buyCurrency = Some(currency))
+          case (acc, inRate(rate)) => acc.copy(buyRate = Some(rate))
+          case (acc, release(amount, currency)) => acc.copy(sellAmount = Some(amount), sellCurrency = Some(currency))
+          case (acc, outRate(rate)) => acc.copy(sellRate = Some(rate))
           case (acc, str) => acc.copy(unrecognized = str +: acc.unrecognized)
         }
       }
     } yield (res)
   }
 
-  def pooling(updateId: Ref[Long]): ZIO[EventLoopGroup with ChannelFactory, Throwable, Unit] = for {
+  import DealDAO._
+  def pooling(updateId: Ref[Long]): ZIO[DealDAO with EventLoopGroup with ChannelFactory, Throwable, Unit] = for {
     b <- pull(updateId)
     str <- b.asString
 //    json = Json.fromString(str)
@@ -153,7 +121,12 @@ object test extends ZIOAppDefault {
     _ <- Console.printLine(res.mkString)
     arr <- parseTextMessage(res)
     _ <- Console.printLine(arr.mkString("(", ", ", ")"))
+
+    deals = arr.map(DealDTO.toDeal)
+    res <- DealDAO.insertMany(deals.toList)
+    _ <- Console.printLine(res.toString)
+
     _ <- pooling( updateId)
   } yield ()
-  def run = migrations.provide(db.dataSourceLayer) *> start(updateIdRef).schedule(Schedule.fixed(10 seconds)).forever.provide(ChannelFactory.auto, EventLoopGroup.auto())
+  def run = migrations.provide(db.dataSourceLayer) *> start(updateIdRef).schedule(Schedule.fixed(10 seconds)).forever.provide(ChannelFactory.auto, EventLoopGroup.auto(), db.dataSourceLayer >>> db.quillLayer >>> DealDAO.live)
 }

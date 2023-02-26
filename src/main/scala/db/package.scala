@@ -12,7 +12,7 @@ import java.io.IOException
 package object db {
 
   val dataSourceLayer: ZLayer[Any, Throwable, DataSource] = Quill.DataSource.fromPrefix("ctx")
-  val quillLayer: ZLayer[DataSource, Nothing, Quill.Mysql[CompositeNamingStrategy2[SnakeCase, Literal]]] = Quill.Mysql.fromNamingStrategy(NamingStrategy(SnakeCase, Literal))
+  val quillLayer: ZLayer[DataSource, Nothing, Quill.Mysql[Literal]] = Quill.Mysql.fromNamingStrategy(Literal)
 
   object LiquibaseService {
 
