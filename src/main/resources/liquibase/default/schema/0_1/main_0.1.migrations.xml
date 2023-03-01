@@ -29,7 +29,7 @@
             <column name="type" type="VARCHAR(1)">
               <constraints nullable="true"/>
             </column>
-            <column name="buy" type="BIGINT">
+            <column name="buy" type="NUMERIC">
               <constraints nullable="true"/>
             </column>
             <column name="buy_currency_id" type="VARCHAR(30)">
@@ -38,7 +38,7 @@
             <column name="buy_rate" type="FLOAT">
               <constraints nullable="true"/>
             </column>
-            <column name="sell" type="BIGINT">
+            <column name="sell" type="NUMERIC">
               <constraints nullable="true"/>
             </column>
             <column name="sell_currency_id" type="VARCHAR(30)">
@@ -50,10 +50,10 @@
             <column name="spread" type="FLOAT">
               <constraints nullable="true"/>
             </column>
-            <column name="profit" type="FLOAT">
+            <column name="profit" type="NUMERIC">
               <constraints nullable="true"/>
             </column>
-            <column name="bonus" type="FLOAT">
+            <column name="bonus" type="NUMERIC">
               <constraints nullable="true"/>
             </column>
         </createTable>

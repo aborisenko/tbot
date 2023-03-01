@@ -6,6 +6,7 @@ import zhttp.service.client.ClientSSLHandler
 import zhttp.service.client.ClientSSLHandler.ClientSSLOptions
 import zhttp.service.{ChannelFactory, Client, EventLoopGroup}
 import zio._
+import org.joda.time.DateTime
 
 import java.io.IOException
 import scala.language.postfixOps
@@ -14,6 +15,7 @@ import io.circe.generic.auto._
 import io.circe.parser._
 import io.circe.syntax._
 
+import java.time.{Instant, LocalDateTime, ZoneId}
 import scala.util.matching.Regex._
 
 case class TelegramMessage(message_id: Long, date: Long, text: Option[String])
@@ -84,7 +86,7 @@ object test extends ZIOAppDefault {
   } yield ()
   /**
    * @uid String */
-  def parseTextMessage(list: Array[(Long, Option[String])]) = {
+  def parseTextMessage(list: Array[(Long, Long, Option[String])]) = {
     val idPattern = """^ID: *([\wа-яА-Я ]+)$$""".r
     val transactionType = raw"^Тип сделки: *([а-яА-Я]+)$$".r
     val take = raw"^Принял: *(\d+) *([a-zA-Zа-яА-Я]+) *$$".r
@@ -93,10 +95,14 @@ object test extends ZIOAppDefault {
     val release = raw"^Выдал: *(\d+) *([a-zA-Zа-яА-Я]+) *$$".r
 
     for {
-      messages <- ZIO.succeed(list.collect{ case (_, Some(str)) => str})
-      res = messages.map { msg =>
-        println(msg)
-        msg.split("\n").map(_.trim).foldLeft(DealDTO()) {
+      messages <- ZIO.succeed(list.collect{ case (_, dateL, Some(str)) => (dateL,str)})
+      res = messages.map { case (dateL,msg) =>
+
+//        val date = Instant.ofEpochMilli(dateL)
+//          .atZone(ZoneId.systemDefault())
+//          .toLocalDateTime;
+
+        msg.split("\n").map(_.trim).foldLeft(DealDTO(date = Some( new java.util.Date(dateL*1000) ))) {
           case (acc, idPattern(id)) => acc.copy(id = Some(id))
           case (acc, transactionType(tType)) => acc.copy(transactionType = Some(tType))
           case (acc, take(amount, currency)) => acc.copy(buyAmount = Some(amount), buyCurrency = Some(currency))
@@ -116,7 +122,8 @@ object test extends ZIOAppDefault {
 //    json = Json.fromString(str)
 //    array = json // "return"
     responseMsg <- ZIO.fromEither(decode[UpdateResponse](str))
-    res = responseMsg.result.map(ur => (ur.update_id,ur.message.text))
+    res = responseMsg.result.map(ur => (ur.update_id,ur.message.date,ur.message.text))
+    _ <- Console.printLine(responseMsg)
     _ <- updateCounter(res.map( _._1 ), updateId).catchAll(_ => ZIO.unit)
     _ <- Console.printLine(res.mkString)
     arr <- parseTextMessage(res)

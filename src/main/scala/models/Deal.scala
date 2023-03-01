@@ -4,8 +4,8 @@ import org.joda.time.DateTime
 
 import java.time.LocalDateTime
 
-case class Deal(uid: Option[String] = None,
-                date: Option[LocalDateTime] = None,
+case class Deal(uid: Option[Long] = None,
+                date: Option[java.util.Date] = None,
                 id: Option[String] = None,
                 `type`: Option[String] = None,
                 buy: Option[BigDecimal] = None,
@@ -15,6 +15,6 @@ case class Deal(uid: Option[String] = None,
                 sell_currency_id: Option[String] = None,
                 sell_rate: Option[Float] = None,
                 spread: Option[Float] = None,
-                profit: Option[Float] = None,
-                bonus: Option[Float] = None
+                profit: Option[BigDecimal] = None,
+                bonus: Option[BigDecimal] = None
                )
