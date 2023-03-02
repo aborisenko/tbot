@@ -17,10 +17,11 @@ lazy val root = (project in file("."))
     libraryDependencies ++= Seq(
       "io.getquill" %% "quill-jdbc-zio" % "4.6.0",
       "io.github.kitlangton" %% "zio-magic"      % "0.3.11",
-      "org.mariadb.jdbc" % "mariadb-java-client" % "3.0.4"// https://mvnrepository.com/artifact/org.mariadb.jdbc/mariadb-java-client
+      //"org.mariadb.jdbc" % "mariadb-java-client" % "3.0.4"// https://mvnrepository.com/artifact/org.mariadb.jdbc/mariadb-java-client
     ),
+    libraryDependencies += "mysql" % "mysql-connector-java" % "8.0.32",
     libraryDependencies ++= Seq(liquibase),
-    libraryDependencies += "joda-time" % "joda-time" % "2.12.1"
+    //libraryDependencies += "joda-time" % "joda-time" % "2.12.1"
 
 
     //    testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"),

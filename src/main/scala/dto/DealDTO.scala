@@ -1,6 +1,6 @@
 package dto
 
-import models.Deal
+import models.deals
 
 import java.time.LocalDateTime
 import scala.util.Try
@@ -22,7 +22,7 @@ case class DealDTO(id: Option[String] = None,
 
 object DealDTO {
 
-  def profit(d: Deal): Option[BigDecimal] = for {
+  def profit(d: deals): Option[BigDecimal] = for {
     br <- d.buy_rate
     sr <- d.sell_rate
     t <- d.`type`
@@ -33,10 +33,18 @@ object DealDTO {
       case "S" => (br-sr)*b
   }
 
+  def profitUSD(d: deals): Option[BigDecimal] = for {
+    ba <- d.buy
+    sa <- d.sell
+    t <- d.`type`
+  } yield t match {
+    case "B" => sa-ba
+    case "S" => ba-sa
+  }
 
   def bonus(p: Option[BigDecimal]) = p.map(_ * .3f)
-  def toDeal(d: DealDTO): Deal = {
-    val dd = Deal(
+  def toDeal(d: DealDTO): deals = {
+    val dd = deals(
       uid = None,
       date = d.date,
       id = d.id,
@@ -45,18 +53,18 @@ object DealDTO {
         case Some("ПРОДАЖА") => Some("S")
         case _ => None
       },
-      buy = d.buyAmount.flatMap(a => Try(BigDecimal(a)).toOption),
+      buy = d.buyAmount.flatMap(a => Try(BigDecimal(a.replace(",","."))).toOption),
       buy_currency_id = d.buyCurrency,
-      buy_rate = d.buyRate.flatMap(r => Try(r.toFloat).toOption),
-      sell = d.sellAmount.flatMap(a => Try(BigDecimal(a)).toOption),
+      buy_rate = d.buyRate.flatMap(r => Try(r.replace(",",".").toFloat).toOption),
+      sell = d.sellAmount.flatMap(a => Try(BigDecimal(a.replace(",","."))).toOption),
       sell_currency_id = d.sellCurrency,
-      sell_rate = d.sellRate.flatMap(r => Try(r.toFloat).toOption),
+      sell_rate = d.sellRate.flatMap(r => Try(r.replace(",",".").toFloat).toOption),
       spread = None,
       profit = None,
       bonus = None
     )
 
-    val p = profit(dd)
+    val p = profit(dd) orElse profitUSD(dd)
 
     dd.copy(profit = p, bonus = bonus(p))
   }

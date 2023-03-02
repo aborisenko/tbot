@@ -1,10 +1,6 @@
 package models
 
-import org.joda.time.DateTime
-
-import java.time.LocalDateTime
-
-case class Deal(uid: Option[Long] = None,
+case class deals(uid: Option[Long] = None,
                 date: Option[java.util.Date] = None,
                 id: Option[String] = None,
                 `type`: Option[String] = None,

@@ -6,17 +6,12 @@ import zhttp.service.client.ClientSSLHandler
 import zhttp.service.client.ClientSSLHandler.ClientSSLOptions
 import zhttp.service.{ChannelFactory, Client, EventLoopGroup}
 import zio._
-import org.joda.time.DateTime
 
 import java.io.IOException
 import scala.language.postfixOps
-import io.circe._
 import io.circe.generic.auto._
 import io.circe.parser._
-import io.circe.syntax._
 
-import java.time.{Instant, LocalDateTime, ZoneId}
-import scala.util.matching.Regex._
 
 case class TelegramMessage(message_id: Long, date: Long, text: Option[String])
 case class UpdateMessage(update_id: Long, message: TelegramMessage)
@@ -89,10 +84,10 @@ object test extends ZIOAppDefault {
   def parseTextMessage(list: Array[(Long, Long, Option[String])]) = {
     val idPattern = """^ID: *([\wа-яА-Я ]+)$$""".r
     val transactionType = raw"^Тип сделки: *([а-яА-Я]+)$$".r
-    val take = raw"^Принял: *(\d+) *([a-zA-Zа-яА-Я]+) *$$".r
-    val inRate = raw"^Курс: *([\d\,\.]+)$$".r
-    val outRate = raw"^Гар: *([\d\.\,]+)$$".r
-    val release = raw"^Выдал: *(\d+) *([a-zA-Zа-яА-Я]+) *$$".r
+    val take = raw"^Принял: *([\d.,]+) *([a-zA-Zа-яА-Я]+) *$$".r
+    val inRate = raw"^Курс: *([\d,.]+)$$".r
+    val outRate = raw"^Гар: *([\d.,]+)$$".r
+    val release = raw"^Выдал: *([\d.,]+) *([a-zA-Zа-яА-Я]+) *$$".r
 
     for {
       messages <- ZIO.succeed(list.collect{ case (_, dateL, Some(str)) => (dateL,str)})

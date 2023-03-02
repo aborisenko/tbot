@@ -5,18 +5,18 @@
         xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
                             http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-2.0.xsd">
 
-    <changeSet id="drop deal table" author="aborisenko">
+    <changeSet id="drop deals table" author="aborisenko">
         <preConditions onFail="MARK_RAN">
-            <tableExists tableName="deal"/>
+            <tableExists tableName="deals"/>
         </preConditions>
 
         <dropTable cascadeConstraints="true"
-                   tableName="deal"/>
+                   tableName="deals"/>
     </changeSet>
 
-    <changeSet id="create deal table" author="aborisenko">
+    <changeSet id="create deals table" author="aborisenko">
 
-        <createTable tableName="deal">
+        <createTable tableName="deals">
             <column name="uid" type="BIGINT" autoIncrement="true">
               <constraints primaryKey="true" nullable="false"/>
             </column>
